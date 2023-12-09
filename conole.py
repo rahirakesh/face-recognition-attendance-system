@@ -1,5 +1,10 @@
 import mysql.connector
 import re  # import regular expresion 
+import smtplib
+import ssl
+from email.message import EmailMessage
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
 print("""
     WELCOME TO FACE RECOGNITION ATTENDANCE SYSTEM
 """)
@@ -40,22 +45,21 @@ class DatabaseConnector:
         except mysql.connector.Error as err:
             print(f"Error: {err}")
 class DepartmentDatabase:
-    def __init__(self, database_connector,teachers_database):
+    def __init__(self, database_connector,teachers_instance):
         self.database_connector = database_connector
-        self.teachers_database = teachers_database
+        self.teachers_bd = teachers_instance      
     def display(self):
         print("""
-_______________________________________________________
-You selected the department database.3
--------------------------------------------------------
-Please Choose your option
--------------------------------------------------------
+    _______________________________________________________
+    You selected the department database.3
+    -------------------------------------------------------
+    Please Choose your option
+    -------------------------------------------------------
               1 -> Departments 
               2 -> Courses
-              3 -> Subjects 
-              4 ->
-              5 -> Main Page
--------------------------------------------------------""")
+              3 -> Subjects   
+              4 -> Time Table            
+    -------------------------------------------------------""")
         option = int(input("Enter your choice: "))
         print("_______________________________________________________")
         if option == 1:
@@ -112,7 +116,23 @@ Please Choose your option
             else:
                 self.display()  
         elif option == 4:
-            TimeTableManager.display()    
+            print("""
+                  Please select your option
+                  1 -> Set Time Table
+                  2 -> Update Time Table
+                  3 -> Back 
+                  4 -> Main Page""")  
+            option ==  int(input("Please enter you option :"))
+            if option == 1:
+                self.set_time_table()
+            elif option ==2:
+                print("Under Construction")
+                pass
+            elif option ==3:
+                self.display()
+            else:
+                db_manager.display_options()
+
         else:
             db_manager.display_options()
     def new_department(self):
@@ -164,10 +184,7 @@ Please Choose your option
         if department_id ==0:
             self.display_department_details()
             department_id = int(input("Enter the department ID you want to update"))
-            if not existing_id:
-                self.display()
-        print("-------------------------------------------------------")
-        # Check if the department ID exists
+           
         query_check_id = "SELECT id FROM departments WHERE id = %s"
         self.database_connector.cursor.execute(query_check_id, (department_id,))
         existing_id = self.database_connector.cursor.fetchone()
@@ -526,25 +543,23 @@ _______________________________________________________
             SELECT
                 semesters.id AS semester_id,
                 semesters.semester_name,
-                courses.name AS course_name,
-                departments.name AS department_name
+                departments.short_name AS dpt_short_name
             FROM
                 semesters
             JOIN
                 classes ON semesters.class_id = classes.id
             JOIN
-                courses ON classes.dpt_id = courses.dpt_id
-            JOIN
-                departments ON courses.dpt_id = departments.id
+                departments ON classes.dpt_id = departments.id
         """
         self.database_connector.cursor.execute(query_semester_info)
         semester_info = self.database_connector.cursor.fetchall()
 
         # Display the result
-        print("{:<12} {:<20} {:<30} {:<30}".format("Semester ID", "Semester Name", "Course Name", "Department Name"))
-        print("-" * 95)
+        print("{:<12} {:<20} {:<20}".format("Semester ID", "Semester Name", "Department Short Name"))
+        print("-" * 52)
         for row in semester_info:
-            print("{:<12} {:<20} {:<30} {:<30}".format(row[0], row[1], row[2], row[3]))
+            print("{:<12} {:<20} {:<20}".format(row[0], row[1], row[2]))
+        return 0
     def generate_subject_id(self):
         query_max_subject_id = "SELECT MAX(id) FROM subjects"
         self.database_connector.cursor.execute(query_max_subject_id)
@@ -556,8 +571,8 @@ _______________________________________________________
         return next_subject_id
     def show_teacher_information(self):
         # Delegate the call to the TeachersDatabase instance
-        self.teachers_database.show_teacher_information()
-    def add_new_subject(self):
+        self.teachers_bd.show_teacher_information()
+    def add_new_subject(self): 
         semester_id = int(input("Please Enter The Semester Id (Enter 0 for finding out semester's id): "))
         if semester_id == 0:
             self.display_semester_info()
@@ -578,7 +593,7 @@ _______________________________________________________
                 print("Invalid Teacher ID. Please enter a valid Teacher ID.")
                 self.add_new_subject()
 
-            self.insert_subject_data(database_connector, subject_name, teacher_id, semester_id)
+            self.insert_subject_data(self.database_connector, subject_name, teacher_id, semester_id)
 
         print("""
             Select your option
@@ -597,7 +612,7 @@ _______________________________________________________
 
     def insert_subject_data(self,database_connector, subject_name, teacher_id, semester_id):
         # Execute the MySQL query to insert data into the subjects table
-        query_insert_subject = "INSERT INTO your_table_name (name, teacher, semester) VALUES (%s, %s, %s)"
+        query_insert_subject = "INSERT INTO subjects (name, teacher, semester) VALUES (%s, %s, %s)"
         values_insert_subject = (subject_name, teacher_id, semester_id)
 
         try:
@@ -647,12 +662,12 @@ _______________________________________________________
         values_update_name = (new_name, subject_id)
 
         try:
-            database_connector.cursor.execute(query_update_name, values_update_name)
-            database_connector.db_connection.commit()
+            self.database_connector.cursor.execute(query_update_name, values_update_name)
+            self.database_connector.db_connection.commit()
             print("Subject name updated successfully.")
         except Exception as e:
             print(f"Error: {e}")
-            database_connector.db_connection.rollback()
+            self.database_connector.db_connection.rollback()
 
     def update_teacher_in_subject(self, subject_id):
         new_teacher_id = int(input("Please enter the new Teacher ID for the subject: "))
@@ -662,19 +677,47 @@ _______________________________________________________
         values_update_teacher = (new_teacher_id, subject_id)
 
         try:
-            database_connector.cursor.execute(query_update_teacher, values_update_teacher)
-            database_connector.db_connection.commit()
+            self.database_connector.cursor.execute(query_update_teacher, values_update_teacher)
+            self.database_connector.db_connection.commit()
             print("Teacher in subject updated successfully.")
         except Exception as e:
             print(f"Error: {e}")
-            database_connector.db_connection.rollback()
+            self.database_connector.db_connection.rollback()
 
     def remove_subject(self):
         print("Under Construction baby but tension na le jaldi bana lega tu")
         self.add_new_subject()
         pass
     
+    def show_subjects(self, semester_id):
+        # Retrieve the subjects for the given semester ID
+        subjects = self.get_subjects(semester_id)
 
+        if subjects:
+            print(f"Subjects for Semester ID {semester_id}:\n")
+            for subject in subjects:
+                print(subject)
+        else:
+            print(f"No subjects found for Semester ID {semester_id}")
+
+    def get_subjects(self, semester_id):
+        # Define the SQL query to retrieve subject names for a given semester_id
+        query = "SELECT name FROM subjects WHERE semester = %s"
+
+        try:
+            # Execute the query
+            self.database_connector.cursor.execute(query, (semester_id,))
+
+            # Fetch all the rows
+            subjects_data = self.database_connector.cursor.fetchall()
+
+            # Extract subject names from the result
+            subjects_names = [row[0] for row in subjects_data]
+
+            return subjects_names
+        except Exception as e:
+            print(f"Error: {e}")
+            return None
 class StudentDatabase:
     def __init__(self, database_connector,department):
         self.database_connector = database_connector
@@ -1017,9 +1060,29 @@ class TimeTableManager:
         self.database_connector = database_connector
         self.department = department
     def display(self):
+        print("""Please select Your Option :
+            1 -> Add schedule
+            2 -> Update Schedule
+            3 -> Special Update
+            4 -> Main Page""")
+        ask = int(input("Please enter your option : "))
+        
+        if ask == 1:
+            self.set_time_table()
+        elif ask == 2:
+            self.update_time_table()  # Call your update_time_table method here
+        elif ask == 3:
+            pass  # Implement your logic for option 3
+        else:
+            db_manager.display_options()
+    def temporary_time_table(self):
+        print("Under construction")
+        pass
+    def set_time_table(self):
         ask = int(input("Please enter semester id (Enter 0 for find out semester id : "))
-        DepartmentDatabase.display_semester_info()
-        DepartmentDatabase.is_semester_id_valid()
+        if ask ==0:
+            self.department.display_semester_info()
+        self.department.is_semester_id_valid(ask)
         #get the how many subject Available in entered semester       
         subjects =  self.get_subjects(ask)
         subjects = self.get_subjects(ask)
@@ -1030,16 +1093,14 @@ class TimeTableManager:
             start_time[i] =input(f"Please enter start time for {subjects[i]}: " )
             end_time[i] = input(f"Please enter End time time for {subjects[i]}: ")
             #also check the coliision meanse if subject1's start tiem 11 o'clock and end time 12 o clock, then subject2 never start time not between 11 to 12 
-
-
     def get_subjects(self, semester_id):
         # Define the SQL query to retrieve subject names for a given semester_id
-        query = "SELECT name FROM subjects WHERE semester = %s"
-        
+        query = "SELECT name FROM subjects WHERE semester = %s;"
+
         try:
             # Execute the query
             self.database_connector.cursor.execute(query, (semester_id,))
-            
+
             # Fetch all the rows
             subjects_data = self.database_connector.cursor.fetchall()
 
@@ -1050,44 +1111,271 @@ class TimeTableManager:
         except Exception as e:
             print(f"Error: {e}")
             return None
+    def create_time_table(self, semester_id):
+        tablename = "time_table" + semester_id
+        self.create_table(tablename=tablename)
+        
+        subjects = self.get_subjects(semester_id)
 
-    def create_time_table(self,semester_id):
-        pass
-    def display(self):
-        ask = int(input("Please enter semester id (Enter 0 to find out semester)"))
-        if ask ==0:
+        for subject in subjects:
+            print(f"{subject}")
+            start_time = input("Please enter Start time: ")
+            end_time = input("Please enter end time: ")
+
+            # Corrected the query and added placeholders for values
+            query = f"INSERT INTO {tablename} (subject, start_time, end_time) VALUES (%s, %s, %s);"
+            values = (subject, start_time, end_time)
+
+            try:
+                # Execute the query
+                self.database_connector.cursor.execute(query, values)
+
+                # Commit the changes to the database
+                self.database_connector.connection.commit()
+
+                print("Timetable entry added successfully.")
+            except Exception as e:
+                print(f"Error: {e}")
+            tablename ="time_table" + semester_id
+            self.create_table(tablename=None)
+            department_id = 1
+            subjects = self.get_subjects(semester_id)
+            for i in subjects:
+                print(f"{subjects[i]}")
+                start_time =input("Please enter Start time : ")
+                end_time = input("Please enter end time : ")
+                quary = f"insert into {tablename} values ({subjects[i]},start_time,end_time);"
+    def create_table(self, tablename):
+        query = f"CREATE TABLE {tablename} (\
+            subject_name VARCHAR(50),\
+            start_time TIME,\
+            end_time TIME\
+        );"
+
+        try:
+            # Execute the query to create the table
+            self.database_connector.cursor.execute(query)
+            # Commit the changes
+            self.database_connector.db_connection.commit()
+            print(f"Table '{tablename}' created successfully.")
+        except Exception as e:
+            # If an error occurs, print the error and rollback the changes
+            print(f"Error creating table: {e}")
+            self.database_connector.db_connection.rollback()
+    def update_time_table(self):
+        # Assuming you have a method to retrieve existing entries, implement it here
+        existing_entries = self.retrieve_existing_entries()
+
+        if not existing_entries:
+            print("No entries found in the timetable.")
+            return
+
+        print("Existing entries:")
+        for entry in existing_entries:
+            print(f"Subject: {entry['subject']}, Start Time: {entry['start_time']}, End Time: {entry['end_time']}")
+
+        entry_to_update = input("Enter the subject to update: ")
+        new_start_time = input("Enter the new start time: ")
+        new_end_time = input("Enter the new end time: ")
+
+        # Assuming you have a method to update the entry, implement it here
+        success = self.update_entry(entry_to_update, new_start_time, new_end_time)
+
+        if success:
+            print("Timetable entry updated successfully.")
+        else:
+            print("Failed to update timetable entry.")
+    def retrieve_existing_entries(self):
+        try:
+            # Define the SQL query to retrieve existing entries
+            query = "SELECT subject, start_time, end_time FROM your_timetable_table;"
+
+            # Execute the query
+            self.database_connector.cursor.execute(query)
+
+            # Fetch all the rows
+            entries_data = self.database_connector.cursor.fetchall()
+
+            # Extract entry details from the result and return a list of dictionaries
+            entries = [{'subject': row[0], 'start_time': row[1], 'end_time': row[2]} for row in entries_data]
+
+            return entries
+        except Exception as e:
+            print(f"Error: {e}")
+            return None
+    def update_entry(self, subject, new_start_time, new_end_time):
+        try:
+            # Define the SQL query to update the entry
+            query = "UPDATE your_timetable_table SET start_time = %s, end_time = %s WHERE subject = %s;"
+            values = (new_start_time, new_end_time, subject)
+
+            # Execute the query
+            self.database_connector.cursor.execute(query, values)
+
+            # Commit the changes to the database
+            self.database_connector.connection.commit()
+
+            # Check if any rows were affected (indicating a successful update)
+            if self.database_connector.cursor.rowcount > 0:
+                return True
+            else:
+                return False
+        except Exception as e:
+            print(f"Error: {e}")
+            return False
+    def display_semester_info(self,id):        
+        if id ==0:
             DatabaseManager.display_semester_information()
         else:
             self.create_time_table()
 class CameraManager:
-    def __init__(self, database_connector):
+    def __init__(self, database_connector,department):
         self.database_connector = database_connector
+        self.department = department
     def display(self):
-        print("You selected the camera management.")
-class Setting:
+        print(""""select Your Option :
+              1 -> Assign Camera to class
+              2 -> Remove Camera
+              3 -> Main Page
+              """)
+        ask =int(input("Please enter your option :"))
+        if ask == 1:
+            pass
+        elif ask == 2 :
+            pass
+        else:
+            self.db_manager.display_optioion()
+        def assign_camera(self):
+            class_id =int(input("Please enter the class id (Enter 0 to find out class id) : "))
+            if class_id ==0:
+                self.class_info(self) 
+        def class_info(self):
+            dpt_id = int(input("Please enter the class id : "))
+            #     if           
+            # pass
+class MessageFormate:
+    def __init__(self):
+        self.self =self
+    def daily_formate(self):
+        def for_student(self,id):
+            pass
+        def for_parent(self,id):
+            name = "Rakesh"
+            class_name = "MCA"
+            semester = 3
+            month = "Find_current_month"
+            subjects = ["AI", "Big data", "CNDC", "Dot Net", "Cyber Security", "Lab/Seminar"]
+
+            body = f"""
+            Dear Parent,
+
+            We hope this message finds you well. We would like to share
+            the attendance record of your child for the month of November.
+
+            Student Information:
+            ___________________________________________________
+            Name of Student    : {name}
+            Class              : {class_name}
+            Semester           : {semester}
+            Attendance Month   : {month}
+            ____________________________________________________
+
+            Monthly Attendance Record:
+            ____________________________________________________
+            Subject Name  | Lectures Taken | Lectures Attended
+            ----------------------------------------------------
+            {subjects[0]} |       20        |         18
+            {subjects[1]} |       20        |         18
+            {subjects[2]} |       20        |         18
+            {subjects[3]} |       20        |         18
+            {subjects[4]} |       20        |         18
+            {subjects[5]} |       20        |         18
+            ----------------------------------------------------
+            Total         |      120        |        108 (90%)
+            ____________________________________________________
+
+            We are pleased to inform you that your child has maintained
+            a commendable attendance of 90% during this month.
+
+            Thank you for your continuous support in ensuring the
+            academic success of your child.
+
+            Best Regards,
+                            [Pt. Ravishankar Shukla University, Raipur]"""
+            
+        def for_teachers(self,id):
+            pass
+        def for_principle(self,id):
+            pass
+    def monthly_formate(self):
+        def for_student(self,id):
+            pass
+        def for_parent(self,id):
+            pass
+        def for_teachers(self,id):
+            pass
+        def for_principle(self,id):
+            pass
+class MessageSender:
     def __init__(self, database_connector):
-        self.database_connector = database_connector
-    def display(self):
-        print("Setting.")
+        self.department_info = self.get_department_info(database_connector)
+
+    def department_info(self):
+        for i in self.department_info:
+            print(i)
+            class course_info:
+                def __init__(self,dpt_id):
+                    self.dpt_id = dpt_id
+                    print(dpt_id)
+    
+    def get_attendance_record(self,std_id,database_connector):
+        #I need make this months attendance record
+        pass
+    def get_student_info(self,semester_id,database_connector):
+        pass
+    def get_subject_name(self, semester_id, database_connector):
+        pass
+    def get_semester_info(self,course_id,databsase_connector):
+        pass
+    def get_course_info(self, dpt_id, database_connector):
+        pass
+
+    def get_department_info(self, database_connector):
+        query = "SELECT id, name FROM departments;"
+        try:
+            # Assuming database_connector has a cursor and connection
+            database_connector.cursor.execute(query)
+
+            # Fetch all the rows
+            departments_data = database_connector.cursor.fetchall()
+
+            # Extract department info and return as a list of tuples
+            return departments_data
+        except Exception as e:
+            print(f"Error: {e}")
+            return []
+
+
+
 class Help:
     def display(self):
         print("You selected help.")
 class DatabaseManager:
-    def __init__(self, department):
+    def __init__(self):
         self.options = {
-            1: StudentDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas")),
+            1: StudentDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas"),department),
             2: TeacherDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas")),
-            3: department,
+            3: DepartmentDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas"),teachers_instance),         
             4: TimeTableManager(DatabaseConnector("localhost", "root", "rakesh9339", "sas"),department),
-            5: CameraManager(DatabaseConnector("localhost", "root", "rakesh9339", "sas")),
-            6: Setting(DatabaseConnector("localhost", "root", "rakesh9339", "sas")),
+            5: CameraManager(DatabaseConnector("localhost", "root", "rakesh9339", "sas"),department),
+            6: MessageSender(DatabaseConnector("localhost", "root", "rakesh9339", "sas")),
             7: Help()
         }
 
     def display_options(self):
         print("""
 _______________________________________________________
-Please select an option:
+please select option :
         1 -> Students information
         2 -> Teachers information
         3 -> Department information
@@ -1097,13 +1385,23 @@ Please select an option:
         7 -> Help
         8 -> Exit
 -------------------------------------------------------""")
-        ask = int(input("Please choose your option: "))
-        if ask in self.options:
-            self.options[ask].display()
+        ask = int(input("Please choose your option : "))
+        if ask == 1:
+            self.options[1].display()
+        elif ask == 2:
+            self.options[2].display()
+        elif ask == 3:
+            self.options[3].display()
+        elif ask == 4:
+            self.options[4].display()
+        elif ask == 5:
+            self.options[5].display()
+        elif ask == 6:
+            self.options[6].display()
+        elif ask == 7:
+            self.options[7].display()
         elif ask == 8:
             exit()
-        else:
-            print("Please select a valid option.")
 
     def manage_database(self, option):
         selected_database = self.options.get(option)
@@ -1111,17 +1409,12 @@ Please select an option:
             selected_database.display()
         else:
             print("Please select a valid option.")
-            self.display_options()
-
+            DatabaseManager.display_option()
 if __name__ == "__main__":
-    # Create instances of the required classes
-    database_connector = DatabaseConnector("localhost", "root", "rakesh9339", "sas")
-    time_table_instance = TimeTableManager(database_connector)
-    department = DepartmentDatabase(database_connector)
-    db_manager = DatabaseManager(department)
-    student_db_instance = StudentDatabase(department)
-    
-    # Display the options and manage the database based on user input
+    teachers_instance = TeacherDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas"))
+    department = DepartmentDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas"),teachers_instance)
+    #department.display_department_details()
+    db_manager = DatabaseManager()
     db_manager.display_options()
     user_option = int(input("Please select which database option you want: "))
     print("_______________________________________________________")
