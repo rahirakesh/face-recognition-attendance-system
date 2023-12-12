@@ -5,6 +5,10 @@ import ssl
 from email.message import EmailMessage
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
+import random
+import hashlib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 print("""
     WELCOME TO FACE RECOGNITION ATTENDANCE SYSTEM
 """)
@@ -1354,54 +1358,45 @@ class MessageSender:
         except Exception as e:
             print(f"Error: {e}")
             return []
-
-
-
 class Help:
     def display(self):
         print("You selected help.")
 class DatabaseManager:
     def __init__(self):
         self.options = {
-            1: StudentDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas"),department),
+            1: StudentDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas"), department),
             2: TeacherDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas")),
-            3: DepartmentDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas"),teachers_instance),         
-            4: TimeTableManager(DatabaseConnector("localhost", "root", "rakesh9339", "sas"),department),
-            5: CameraManager(DatabaseConnector("localhost", "root", "rakesh9339", "sas"),department),
+            3: DepartmentDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas"), teachers_instance),
+            4: TimeTableManager(DatabaseConnector("localhost", "root", "rakesh9339", "sas"), department),
+            5: CameraManager(DatabaseConnector("localhost", "root", "rakesh9339", "sas"), department),
             6: MessageSender(DatabaseConnector("localhost", "root", "rakesh9339", "sas")),
-            7: Help()
+            7: Help(),
         }
 
     def display_options(self):
-        print("""
+        while True:
+            print("""
 _______________________________________________________
-please select option :
-        1 -> Students information
-        2 -> Teachers information
-        3 -> Department information
-        4 -> Time Table
-        5 -> Camera Management
-        6 -> Setting
-        7 -> Help
-        8 -> Exit
+Please select an option:
+1 -> Students information
+2 -> Teachers information
+3 -> Department information
+4 -> Time Table
+5 -> Camera Management
+6 -> Setting
+7 -> Help
+8 -> Exit
 -------------------------------------------------------""")
-        ask = int(input("Please choose your option : "))
-        if ask == 1:
-            self.options[1].display()
-        elif ask == 2:
-            self.options[2].display()
-        elif ask == 3:
-            self.options[3].display()
-        elif ask == 4:
-            self.options[4].display()
-        elif ask == 5:
-            self.options[5].display()
-        elif ask == 6:
-            self.options[6].display()
-        elif ask == 7:
-            self.options[7].display()
-        elif ask == 8:
-            exit()
+            try:
+                ask = int(input("Please choose your option: "))
+                if ask == 8:
+                    exit()
+                elif 1 <= ask <= 7:
+                    self.options[ask].display()
+                else:
+                    print("Please enter a valid option.")
+            except ValueError:
+                print("Invalid input. Please enter a number.")
 
     def manage_database(self, option):
         selected_database = self.options.get(option)
@@ -1409,13 +1404,154 @@ please select option :
             selected_database.display()
         else:
             print("Please select a valid option.")
-            DatabaseManager.display_option()
+
+def login(db_manager):
+    print("Welcome To Face Recognition Attendance System")
+
+    #function to validate entered email is correct formate or not 
+    def is_valid_email(email):
+        # Using a simple regular expression for basic email validation
+        email_pattern = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
+        return bool(re.match(email_pattern, email))
+    #function to validate entered contact number (10 digit) is correct or not
+    def is_valid_contact(contact):
+        # Using a simple regular expression for 10-digit phone number validation
+        contact_pattern = re.compile(r'^\d{10}$')
+        return bool(re.match(contact_pattern, contact))
+
+    #function to send OTP using SMTP
+    def send_otp_email(email):       
+        # Set up the email server
+        smtp_server = "smtp.gmail.com"
+        smtp_port = 465
+        smtp_username = "prsu.attendance@gmail.com"
+        smtp_password = "fvynkkdppthnxtvf"
+
+        # Create a secure SSL context
+        context = ssl.create_default_context()
+
+        # Create the MIME object
+        msg = MIMEMultipart()
+        msg['From'] = smtp_username
+        msg['To'] = email
+        msg['Subject'] = 'Your OTP for Verification'
+        otp = generate_otp()
+        # Body of the email
+        body = f"""Hello,
+    Your OTP for Face Recognition Attendance System is: {otp}
+    Please enter this OTP to complete the verification process.
+    Best regards,The Face Recognition Team.
+    """
+        msg.attach(MIMEText(body, 'plain'))
+        # Connect to the SMTP server and send the email
+        with smtplib.SMTP_SSL(smtp_server, smtp_port, context=context) as server:
+            server.login(smtp_username, smtp_password)
+            server.sendmail(smtp_username, email, msg.as_string())
+            print("OTP successfully sent ")
+
+        return otp
+    #function to generate OTP using random
+    def generate_otp(length=6):
+        return ''.join(str(random.randint(0, 9)) for _ in range(length))
+
+    #function to convert passcode into hashcode using hass library 
+    def hash_password(password):
+        # Use SHA-256 for password hashing
+        hash_object = hashlib.sha256(password.encode())
+        return hash_object.hexdigest()
+
+    #to Verify OTP
+    def otp_verifier(otp_entered, otp):
+        # For simplicity, the correct OTP is hardcoded here.
+        if otp_entered == otp:
+            return True
+        else:
+            return False
+
+    #convert hassed data into plain text for comparision passcode
+    def retrieve_hashed_password(email):
+        # Connect to MySQL 
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="rakesh9339",
+            database="sas"
+        )
+
+        cursor = conn.cursor()
+
+        # Retrieve hashed password for the given email
+        sql = "SELECT passcode FROM login_details WHERE email = %s"
+        cursor.execute(sql, (email,))
+        result = cursor.fetchone()
+
+        # Close the cursor and connection
+        cursor.close()
+        conn.close()
+
+        if result:
+            return result[0]  # Return the hashed password
+        else:
+            return None  # Email not found in the database
+
+    # Login process
+    email_id = input("Email Id: ")
+    pc = input("Password: ")
+
+    #start here excution of pragram 
+    def main():
+        if email_id == "" and pc == "":  
+            print("You entered add New user")
+            otp=send_otp_email("prsu.attendance@gmail.com")
+            entered_otp = input(("Please enter OTP : "))
+            check = otp_verifier(entered_otp, otp)
+            if check:
+                print("Please Provide New Account details :")
+                userName = input("Please enter User Name: ")
+                contact_number = input("Please enter Contact number: ")
+                email = input("Please enter Email Id: ")
+                print("OTP sending. Please wait for a minute.")
+                otp = send_otp_email(email)
+
+                # Send OTP and verify
+                max_attempts = 3
+                for attempt in range(1, max_attempts + 1):
+                    otp_enter = int(input("Enter OTP: "))
+                    check = otp_verifier(otp_enter, otp)
+                    if check:
+                        print(f"User with email {email} has been successfully added.")
+                        return
+                    else:
+                        print(f"Attempt {attempt}/{max_attempts}: OTP verification failed.")
+
+                print("Maximum attempts reached. Exiting.")
+                
+            else:
+                print("Invalid master password. Exiting.")
+        else:
+            # Retrieve hashed password from the database
+            hashed_password_from_db = retrieve_hashed_password(email_id)
+
+            if hashed_password_from_db:
+                # Hash the entered password for comparison
+                entered_password_hashed = hash_password(pc)
+
+                # Compare hashed passwords
+                if hashed_password_from_db == entered_password_hashed:
+                    print("Login successful")            
+                    
+                    db_manager.display_options()
+                else:
+                    print("Invalid password. Please enter valid credentials.")
+            else:
+                print("Email not found. Please enter valid credentials.")
+
+    # Call the main function, It start the login page
+    main()
+
 if __name__ == "__main__":
     teachers_instance = TeacherDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas"))
-    department = DepartmentDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas"),teachers_instance)
-    #department.display_department_details()
-    db_manager = DatabaseManager()
-    db_manager.display_options()
-    user_option = int(input("Please select which database option you want: "))
-    print("_______________________________________________________")
-    db_manager.manage_database(user_option)
+    department = DepartmentDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas"), teachers_instance)
+    db_manager = DatabaseManager()        
+    login(db_manager)
+    
