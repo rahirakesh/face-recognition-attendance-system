@@ -1,261 +1,560 @@
+'''---------------------------------------------------------------------------------------------------
+About Author ->
+        Name - Rakesh Kumar
+               MCA 3 Semester
+               9339rahi@gmail.com
+        Date - 27-11-2023
+--------------------------------------------------------------------------------------------------------    
+The code is part of " Face Recognition Attendance system " for Pt. Ravishankar Shukla univercity Raipur
+.......................................................................................................
+This script interacts with a MySQL database to manage attendance records for students and teachers.
+
+Classes:
+    - TeachersAttendance: Handles attendance record functionalities for teachers.
+    - Student: Manages attendance records for students.
+
+Classes within TeachersAttendance:
+    - InsertRecord: Handles the insertion of attendance records for teachers.
+    - GetRecord: Manages the retrieval of attendance records for teachers.
+
+Classes within Student:
+    - InsertRecord: Manages the insertion of attendance records for students.
+    - GetRecord: Handles the retrieval of attendance records for students.
+
+Functions:
+    - create_table(dpt_id, date, conn): Creates a table for teacher attendance.
+    - insert_attendance(dpt_id, date, conn): Inserts teacher attendance records.
+    - get_today_tcr_record(tcr_id, conn): Retrieves today's teacher attendance records.
+    - get_month_tcr_record(teacher_id, conn, month=None, year=None): Retrieves monthly teacher attendance records.
+    - calculate_attendance(teacher_id, table_name, conn): Calculates teacher attendance statistics.
+    - get_tables_for_teacher(year, month, conn, dpt_id): Gets tables for a teacher based on year and month.
+    - create_students_attendance_table(subject_id, conn): Creates a table for student attendance.
+    - get_semester_ids(dpt_id, conn): Retrieves semester IDs for a department.
+    - get_subject_ids(semester_id, conn): Retrieves subject IDs for a semester.
+    - get_student_ids(subject_id, conn): Retrieves student IDs for a subject.
+    - get_today_std_record(student_id, conn): Retrieves today's student attendance records.
+    - get_number_of_days_in_month(year, month): Gets the number of days in a month.
+    - get_monthly(student_id, conn): Retrieves monthly student attendance records.
+
+Main Function:
+    - main(): Serves as the entry point for user interactions. Connects to the database, creates instances of the
+      Student and TeachersAttendance classes, and provides options to retrieve attendance records for students and
+      teachers. Incorporates error handling for potential exceptions during execution.
+
+Usage:
+    - Run the script to interact with the attendance record system.
+----------------------------------------------------------------------------------------------------------------
+'''
+
 import mysql.connector
 import datetime
-import logging
-from mysql.connector.errors import IntegrityError
+import calendar
+from mysql.connector.errors import IntegrityError, ProgrammingError
 
-class Main:
-    def __init__(self):
-        print("""Please select you option : 
-            1. Teachers Attendance Record
-            2. StudentsAttendance Record
-            3. Holiday
-            4. Main Page """)
-        ask  = int(input("Please enter selected option :"))
-        if ask == 1:
-            print("""
-                """)
-            dpt_id  = int(input("Please enter department id (enter 0 to find out departmetns id ):"))
-            if dpt_id == 0:
-                return              
+'''
+    The TeachersAttendance class manages the attendance records for teachers.
 
-            else:
-                #self.TeachersAttendance.GetRecord.get_monthly(dpt_id,connection)
-                pass
-        elif ask == 2:
-            print("""Please select your option : 
-                  1. All Student in specific Department
-                  2. All Student in specific Semester
-                  3. All student in specific Subject""")
-            ask =int(input("Please enter your choice : "))
-            if ask == 1 :
+    Attributes
+    ----------
+    InsertRecord : class
+        A nested class for inserting records into the database.
+    GetRecord : class
+        A nested class for retrieving records from the database.
 
-                pass
-            #self.StudentAttendance.GetRecord.get_monthly(dpt_id,connection)
-            pass
-class Holiday:
-        def __init__(self):
-            self.holidays = set()
-            logging.basicConfig(level=logging.INFO)
-        def unofficial_holiday(self):
-            user_input = input("Enter the date for an unofficial holiday (YYYY-MM-DD): ")
-            self.add_holiday(user_input)
-            print(f"Added unofficial holiday on {user_input}.")
-        def official_holiday(self):
-            # Execute automatically on the first date of the month
-            today = datetime.date.today()
-            if today.day == 1 and today.weekday() == 6:  # Check if it's the first day of the month and Sunday (weekday() returns 6 for Sunday)
-                first_day_of_month = today.strftime("%Y-%m-%d")
-                self.add_holiday(first_day_of_month)
-                print(f"Automatically added a holiday on {first_day_of_month} (Sunday).")
-        def add_holiday(self, date_str):
-            try:
-                holiday_date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
-                self.holidays.add(holiday_date)
-                logging.info(f"Added holiday on {date_str}.")
-            except ValueError:
-                logging.error("Invalid date format. Please use YYYY-MM-DD.")
-                
-                raise
-        def is_holiday(self, date):
-            return date in self.holidays
-class TeachersAttendance:
-    
+    Methods
+    -------
+    (methods of TeachersAttendance class)
+    ''' 
+class TeachersAttendance:  
+    '''
+        The InsertRecord class handles the insertion of attendance records for teachers.
+
+        Methods
+        -------
+        create_table(dpt_id, date, conn)
+            Creates an attendance table for a department on a specific date.
+        insert_attendance(dpt_id, date, conn)
+            Inserts attendance records for teachers in a department on a specific date.
+'''
     class InsertRecord:
-        def create_table(self, id, date, conn):
+        def create_table(self, dpt_id, date, conn):
             try:
-                # Check if the current day is Sunday (weekday() returns 6 for Sunday)
                 if datetime.datetime.now().weekday() == 6:
                     print("Skipping table creation on Sunday.")
                     return
 
-                # Create table if it does not exist
-                tbl_name = f"{id}_{date}"
+                tbl_name = f"t_{dpt_id}_{date}"
                 query = f"CREATE TABLE IF NOT EXISTS {tbl_name} (attendance_id INT AUTO_INCREMENT PRIMARY KEY, teachers_id INT NOT NULL, status CHAR(1));"
 
                 with conn.cursor() as cursor:
                     cursor.execute(query)
 
             except Exception as e:
-                # Handle exceptions, log or print an error message if needed
                 print(f"Error creating table: {e}")
 
         def insert_attendance(self, dpt_id, date, conn):
             cursor = conn.cursor()
 
             try:
-                # Create the table
                 self.create_table(dpt_id, date, conn)
 
-                # Get all teachers in the specified department
                 cursor.execute("SELECT id FROM teachers WHERE dpt_id = %s", (dpt_id,))
                 teacher_ids = cursor.fetchall()
 
-                # Iterate through all teachers and insert attendance records
                 for teacher_id in teacher_ids:
-                    tbl_name = f"{dpt_id}_{date}"
+                    tbl_name = f"t_{dpt_id}_{date}"
                     query = f"INSERT INTO {tbl_name} (teachers_id, status) VALUES (%s, 'P');"
-                    
+
                     try:
                         cursor.execute(query, (teacher_id[0],))
                         conn.commit()
                     except IntegrityError as e:
-                        # Handle duplicate entry error
                         print(f"Error inserting attendance for teacher {teacher_id[0]}: {e}")
-                        conn.rollback()  # Rollback the transaction
+                        conn.rollback()
 
             finally:
-                # Close the cursor, do not close the connection here to allow reuse
                 cursor.close()
-
-    class GetRecord:
         
-        def get_monthly(self, dpt_id, conn):
+        
+        '''
+        The GetRecord class handles the retrieval of attendance records for teachers.
+        Methods
+        -------
+        get_today_tcr_record(tcr_id, conn)
+        Retrieves today's attendance records for a teacher.
+        get_month_tcr_record(teacher_id, conn, month=None, year=None)
+        Retrieves monthly attendance records for a teacher.
+        calculate_attendance(teacher_id, table_name, conn)
+        Calculates the attendance statistics for a teacher.
+        get_tables_for_teacher(year, month, conn, dpt_id)
+        Retrieves all tables for a given department, month, and year.
+        '''
+    class GetRecord:
+        def get_today_tcr_record(self, tcr_id, conn):
             cursor = conn.cursor()
 
             try:
-                # Example: Fetching all teachers for a given department
-                cursor.execute(f"SELECT * FROM teachers WHERE dpt_id = {dpt_id}")
-                teachers = cursor.fetchall()
+                # Retrieve the department ID for the given teacher ID from the database
+                cursor.execute(f"SELECT dpt_id FROM teachers WHERE id = {tcr_id}")
+                dpt_id = cursor.fetchone()[0]
 
-                for teacher in teachers:
-                    monthly_data = self.calculate_attendance(teacher[0], dpt_id, conn)  # Pass dpt_id as an argument
+                # Construct the table name based on department and current date
+                today = datetime.date.today()
+                tbl_name = f"t_{dpt_id}_{today.strftime('%Y-%m-%d')}"
+
+                # Query to select records from the specified table
+                query = f"SELECT * FROM {tbl_name} WHERE teachers_id = {tcr_id}"
+
+                cursor.execute(query)
+                records = cursor.fetchall()
+
+                if records:
+                    attendance_data = []
+                    for record in records:
+                        record_dict = {
+                            'attendance_id': record[0],
+                            'teachers_id': record[1],
+                            'status': record[2]
+                        }
+                        attendance_data.append(record_dict)
+
+                    return attendance_data
+                else:
+                    return []
 
             finally:
-                # Close the cursor, do not close the connection here to allow reuse
                 cursor.close()
 
-        def calculate_attendance(self, teacher_id, dpt_id, conn):
-            current_month = datetime.datetime.now().strftime("%Y%m")
-            all_tables = self.get_tables_for_teacher(current_month, conn)
+        def get_month_tcr_record(self, teacher_id, conn, month=None, year=None):
+            if not month or not year:
+                current_date = datetime.date.today()
+                month = current_date.month
+                year = current_date.year
 
-            total_days_present = 0
-
-            for table_name in all_tables:
-                cursor = conn.cursor()
-
-                try:
-                    # Count the number of rows (days) for the teacher in the current table
-                    query = f"SELECT COUNT(*) FROM {table_name} WHERE teachers_id = {teacher_id} AND status = 'P';"
-                    cursor.execute(query)
-                    days_present = cursor.fetchone()[0]
-
-                    total_days_present += days_present
-
-                finally:
-                    cursor.close()
-
-            print(f"Total days present for teacher id -> {teacher_id}: {total_days_present}")
-        def get_tables_for_teacher(self, current_month, conn):
             cursor = conn.cursor()
 
             try:
-                # Fetch all tables for the current month
-                cursor.execute(f"SHOW TABLES LIKE '%_{current_month}%'")
-                all_tables = cursor.fetchall()
+                # Fetch department ID for the given teacher
+                cursor.execute(f"SELECT dpt_id FROM teachers WHERE id = {teacher_id}")
+                dpt_id = cursor.fetchone()[0]
 
-                # Extract table names
-                table_names = [table[0] for table in all_tables]
+                # Fetch all tables for the specified month and year
+                all_tables = self.get_tables_for_teacher(year, month, conn, dpt_id)
+
+                total_working_days = 0
+                total_present_days = 0
+
+                for table_name in all_tables:
+                    working_days, present_days = self.calculate_attendance(teacher_id, table_name, conn)
+
+                    total_working_days += working_days
+                    total_present_days += present_days
+
+                print(f"Total working days for teacher ID {teacher_id}: {total_working_days}")
+                print(f"Total present days for teacher ID {teacher_id}: {total_present_days}")
+                return ((total_present_days * 100) / total_working_days) if total_working_days > 0 else 0
+
+            finally:
+                cursor.close()
+
+        def calculate_attendance(self, teacher_id, table_name, conn):
+            cursor = conn.cursor()
+
+            try:
+                # Fetch the count of total days and present days
+                query = f"SELECT COUNT(*), SUM(CASE WHEN status = 'P' THEN 1 ELSE 0 END) FROM {table_name} WHERE teachers_id = {teacher_id};"
+                cursor.execute(query)
+                result = cursor.fetchone()
+
+                working_days, present_days = result[0], result[1]
+
+                return working_days, present_days
+
+            finally:
+                cursor.close()
+
+        def get_tables_for_teacher(self, year, month, conn, dpt_id):
+            cursor = conn.cursor()
+
+            try:
+                # Fetch all tables for the given department, month, and year
+                cursor.execute(f"SHOW TABLES LIKE 't_{dpt_id}%'")
+                all_tables = cursor.fetchall()
+                table_names = [table[0] for table in all_tables if f"{year}{month:02}" in table[0]]
 
                 return table_names
 
             finally:
                 cursor.close()
+
+
+'''Class for handling students' attendance records.
+
+    Attributes
+    ----------
+    InsertRecord : class
+        A nested class for inserting records into the database.
+    GetRecord : class
+        A nested class for retrieving records from the database.
+
+    Methods
+    -------
+    (methods of Student class)
+
+    Examples
+    --------
+    Creating an instance of the Student class:
+    >>> student_instance = Student()
+
+    Accessing nested classes:
+    >>> insert_instance = student_instance.InsertRecord()
+    >>> get_instance = student_instance.GetRecord()
+
+    (Detailed documentation for nested classes in their respective sections.)
+
+'''
 class Student:
+    ''' A nested class for inserting records into the database.
+
+        Methods
+        -------
+        create_students_attendance_table(subject_id, conn)
+            Creates an attendance table for students based on the subject.
+
+        get_semester_ids(dpt_id, conn)
+            Retrieves semester IDs for a given department.
+
+        get_subject_ids(semester_id, conn)
+            Retrieves subject IDs for a given semester.
+
+        get_student_ids(subject_id, conn)
+            Retrieves student IDs for a given subject.
+
+        insert_attendance(dpt_id, conn)
+            Inserts attendance records into the database.
+
+        Examples
+        --------
+        Creating an instance of the InsertRecord class:
+        >>> insert_instance = Student.InsertRecord()
+
+        Creating a students' attendance table:
+        >>> insert_instance.create_students_attendance_table(subject_id, connection)
+
+        (Other examples for methods.)'''
     class InsertRecord:
-        def create_students_attendance_table(self, dpt_id, conn):
-            # get semester_ids based on dpt_id
-            semester_ids = self.get_semester_ids(dpt_id, conn)
+        def create_students_attendance_table(self, subject_id, conn):
+            # Get the current date
+            date = datetime.date.today().strftime("%Y-%m-%d")
+            # Generate the table name using subject_id and date
+            tbl_name = f"sub{subject_id}_{date}"
+            # SQL query to create the table
+            query = f"""CREATE TABLE IF NOT EXISTS {tbl_name} (
+                attendance_id INT AUTO_INCREMENT PRIMARY KEY,
+                student_id INT NOT NULL,
+                status CHAR(1),
+                FOREIGN KEY (student_id) REFERENCES students(id)
+            );"""
+            # Execute the query using a cursor
+            with conn.cursor() as cursor:
+                cursor.execute(query)
 
-            for semester_id in semester_ids:
-                # get subject_ids based on semester_id
-                subject_ids = self.get_subject_ids(semester_id, conn)
-
-                for subject_id in subject_ids:
-                    #get students based on subject_id
-                    student_ids = self.get_student_ids(subject_id, conn)
-
-                    for student_id in student_ids:
-                        date =  datetime.date.today().strftime("%Y-%m-%d")
-                        subject_name = ""
-                        self.create_table(subject_name, date, conn)
-                        
-
-        def insert_data(self):
-            pass  
-        def create_table(self, name, date, conn):
-            try:
-                # Check if the current day is Sunday (weekday() returns 6 for Sunday)
-                if datetime.datetime.now().weekday() == 6:
-                    print("Skipping table creation on Sunday.")
-                    return
-
-                # Create table if it does not exist
-                tbl_name = f"{name}_{date}"
-                query = f"CREATE TABLE IF NOT EXISTS {tbl_name} (attendance_id INT AUTO_INCREMENT PRIMARY KEY, std_id INT NOT NULL, status CHAR(1));"
-
-                with conn.cursor() as cursor:
-                    cursor.execute(query)
-
-            except Exception as e:
-                # Handle exceptions, log or print an error message if needed
-                print(f"Error creating table: {e}")
-       
         def get_semester_ids(self, dpt_id, conn):
             cursor = conn.cursor()
-
-            try:
-                # Fetch semester_ids based on dpt_id from the semesters table
-                cursor.execute("SELECT id FROM semesters WHERE class_id IN (SELECT id FROM classes WHERE dpt_id = %s)", (dpt_id,))
-                semester_ids = [row[0] for row in cursor.fetchall()]
-                return semester_ids
-
-            finally:
-                cursor.close()
+            cursor.execute("SELECT id FROM semesters WHERE dpt_id = %s", (dpt_id,))
+            semester_ids = cursor.fetchall()
+            cursor.close()
+            return semester_ids
 
         def get_subject_ids(self, semester_id, conn):
             cursor = conn.cursor()
-
-            try:
-                # Fetch subject_ids based on semester_id from the subjects table
-                cursor.execute("SELECT id FROM subjects WHERE semester = %s", (semester_id,))
-                subject_ids = [row[0] for row in cursor.fetchall()]
-                return subject_ids
-
-            finally:
-                cursor.close()
+            cursor.execute("SELECT id FROM subjects WHERE semester_id = %s", (semester_id,))
+            subject_ids = cursor.fetchall()
+            cursor.close()
+            return subject_ids
 
         def get_student_ids(self, subject_id, conn):
             cursor = conn.cursor()
+            cursor.execute("SELECT id FROM students WHERE subject_id = %s", (subject_id,))
+            student_ids = cursor.fetchall()
+            cursor.close()
+            return student_ids
 
+        def insert_attendance(self, dpt_id, conn):
+            pass
+    '''
+    A nested class for retrieving records from the database.
+
+        Methods
+        -------
+        get_today_std_record(student_id, conn)
+            Retrieves today's attendance records for a specific student.
+
+        get_number_of_days_in_month(year, month)
+            Gets the number of days in a specific month.
+
+        get_monthly(student_id, conn)
+            Retrieves monthly attendance data for a specific student.
+
+        Examples
+        --------
+        Creating an instance of the GetRecord class:
+        >>> get_instance = Student.GetRecord()
+
+        Retrieving today's attendance records:
+        >>> get_instance.get_today_std_record(student_id, connection)
+
+        (Other examples for methods.)
+    '''
+    class GetRecord:
+        def get_today_std_record(self, student_id, conn):
+            cursor = conn.cursor()
             try:
-                # Fetch student_ids based on subject_id from the students table
-                cursor.execute("SELECT id FROM students WHERE semester = %s", (subject_id,))
-                student_ids = [row[0] for row in cursor.fetchall()]
-                return student_ids
+                # Fetch subjects for the student
+                cursor.execute(f"""
+                    SELECT subjects.id, subjects.name
+                    FROM students
+                    JOIN semesters ON students.semester = semesters.id
+                    JOIN classes ON semesters.class_id = classes.id
+                    JOIN departments ON classes.dpt_id = departments.id
+                    JOIN student_subjects ON students.id = student_subjects.student_id
+                    JOIN subjects ON student_subjects.subject_id = subjects.id
+                    WHERE students.id = {student_id}
+                """)
+                subjects_info = cursor.fetchall()
+
+                info = {}
+                for subject_id, subject_name in subjects_info:
+                    total_class = 0
+                    total_attendance = 0
+
+                    # Get the current date
+                    today = datetime.date.today()
+
+                    # Construct the table name based on the current date
+                    table_name = f"sub_{subject_id}_{today.year}_{today.month:02d}_{today.day:02d}"
+
+                    # Query to retrieve attendance records for the specified student from the table
+                    query = f"SELECT status FROM {table_name} WHERE student_id = {student_id};"
+
+                    cursor.execute(query)
+                    result = cursor.fetchone()
+
+                    if result and result[0] == 'P':
+                        total_attendance += 1
+
+                    total_class += 1
+
+                    attendance_percentage = (total_attendance * 100) / total_class
+                    info[subject_name] = attendance_percentage
 
             finally:
                 cursor.close()
-    class GetRecord:
-        pass
-try:
-    # these values with your actual database credentials
-    db_config = {
-        'host': 'localhost',
-        'user': 'root',
-        'password': 'rakesh9339',
-        'database': 'sas'
-    }
 
-    # Connect to the database
-    conn = mysql.connector.connect(**db_config)
+            return info
 
-    # Create an instance of the GetRecord class and retrieve monthly data
-    get_record_instance = TeachersAttendance().GetRecord()
-    get_record_instance.get_monthly(dpt_id=1, conn=conn)
-     
-    # Create an instance of the InsertRecord class and create attendance tables
-    student_insert_record = Student().InsertRecord()
-    student_insert_record.create_students_attendance_table(dpt_id=1, conn=conn)
-finally:
-    # Close the connection outside the classes
-    conn.close()
+        def get_number_of_days_in_month(self, year, month):
+            # Check if the month is within the valid range (1 to 12)
+            if 1 <= month <= 12:
+                # Use calendar module to get the number of days in the specified month
+                return calendar.monthrange(year, month)[1]
+            else:
+                # Handle invalid month
+                print("Invalid month. Month should be between 1 and 12.")
+                return 0
+
+        def get_monthly(self, student_id, conn):
+            cursor = conn.cursor()
+
+            try:
+                # Fetch subjects for the student
+                cursor.execute(f"""
+                    SELECT subjects.id, subjects.name
+                    FROM students
+                    JOIN semesters ON students.semester = semesters.id
+                    JOIN classes ON semesters.class_id = classes.id
+                    JOIN departments ON classes.dpt_id = departments.id
+                    JOIN student_subjects ON students.id = student_subjects.student_id
+                    JOIN subjects ON student_subjects.subject_id = subjects.id
+                    WHERE students.id = {student_id}
+                """)
+                subjects_info = cursor.fetchall()
+
+                info = {}
+                for subject_id, subject_name in subjects_info:
+                    total_class = 0
+                    total_attendance = 0
+
+                    # Get the current month and year
+                    current_date = datetime.date.today()
+                    year = current_date.year
+                    month = current_date.month
+
+                    # Get the number of days in the current month
+                    month_date = calendar.monthrange(year, month)[1]
+
+                    for day in range(1, month_date + 1):
+                        table_name = f"sub_{subject_id}_{day:02d}_{month}"
+                        # Adjust the query to get the attendance status for the specific day
+                        query = f"SELECT status FROM {table_name} WHERE student_id = {student_id};"
+
+                        cursor.execute(query)
+                        result = cursor.fetchone()
+
+                        if result and result[0] == 'P':
+                            total_attendance += 1
+
+                        total_class += 1
+
+                    attendance_percentage = (total_attendance * 100) / total_class
+                    info[subject_name] = attendance_percentage
+
+            finally:
+                cursor.close()
+
+            return info    
+
+
+'''
+    Main function to interact with the attendance record system.
+
+    Establishes a connection to the MySQL database, creates instances of the Student and TeachersAttendance classes,
+    and prompts the user to choose between student and teacher attendance records. Further options are provided for
+    obtaining today's or monthly attendance records.
+
+    Examples
+    --------
+    Running the main function:
+    >>> main()
+'''
+def main():
+    try:
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="rakesh9339",
+            database="sas"
+        )
+
+        std_ins = Student()
+        get_std = std_ins.GetRecord()
+
+        tcr = TeachersAttendance()
+        get_tcr = tcr.GetRecord()
+
+        print("""Please select your option:
+              1. Student Attendance Record
+              2. Teachers Attendance Record
+        """)
+        user_choice = int(input("Please enter your choice: "))
+
+        if user_choice == 1:
+            print("""
+                  1. Get Today Attendance Record
+                  2. Get Monthly Attendance Record
+            """)
+            user_option = int(input("Please enter your option: "))
+            student_id = int(input("Please enter student Id: "))
+
+            try:
+                if user_option == 1:
+                    today_data = get_std.get_today_std_record(student_id, connection)
+                    if today_data:
+                        print(f"Today's student attendance records for student ID {student_id}:")
+                        for record in today_data:
+                            print(record)
+                    else:
+                        print(f"No attendance records found for today for student ID {student_id}.")
+                elif user_option == 2:
+                    month_data = get_std.get_monthly(student_id, connection)
+                    if month_data:
+                        print(f"Monthly attendance data for student ID {student_id}:")
+                        for subject, percentage in month_data.items():
+                            print(f"{subject}: {percentage}%")
+                    else:
+                        print(f"No attendance records found for the specified month for student ID {student_id}.")
+                else:
+                    print("Invalid option.")
+            except ProgrammingError as pe:
+                print(f"Error in SQL query: {pe}")
+
+        elif user_choice == 2:
+            print("""
+                  1. Get Today Attendance Record
+                  2. Get Monthly Attendance Record
+            """)
+            user_option = int(input("Please enter your option: "))
+            tcr_id = int(input("Please enter the teacher id: "))
+
+            try:
+                if user_option == 1:
+                    today_data = get_tcr.get_today_tcr_record(tcr_id, connection)
+                    if today_data:
+                        print(f"Today's teacher attendance records for teacher ID {tcr_id}:")
+                        for record in today_data:
+                            print(record)
+                    else:
+                        print(f"No attendance records found for today for teacher ID {tcr_id}.")
+                elif user_option == 2:
+                    month_data = get_tcr.get_month_tcr_record(tcr_id, connection)
+                    if month_data:
+                        print(f"Monthly attendance data for teacher ID {tcr_id}: {month_data}%")
+                    else:
+                        print(f"No attendance records found for the specified month for teacher ID {tcr_id}.")
+                else:
+                    print("Invalid option.")
+            except ProgrammingError as pe:
+                print(f"Error in SQL query: {pe}")
+
+        else:
+            print("Invalid option.")
+
+    except mysql.connector.Error as e:
+        print(f"Error connecting to MySQL: {e}")
+
+    finally:
+        if 'connection' in locals() and connection.is_connected():
+            connection.close()
+
+if __name__ == "__main__":
+    main()
