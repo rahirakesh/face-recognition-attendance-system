@@ -9,6 +9,7 @@ import random
 import hashlib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import Face_Store
 print("""
     WELCOME TO FACE RECOGNITION ATTENDANCE SYSTEM
 """)
@@ -734,8 +735,9 @@ class StudentDatabase:
               1 -> Add new student
               2 -> Update student data
               3 -> Remove Student data
-              4 -> Student Information
-              5 -> Main Page
+              4 -> Show Student Information
+              5 -> Store or Update Face Data
+              6 -> Main Page
         """)
         option = int(input("Please enter your option: "))
         if option == 1:
@@ -746,7 +748,9 @@ class StudentDatabase:
             self.remove_student()
         elif option == 4:
             self.student_information()
-        elif option == 5:
+        elif option ==5:
+            Face_Store.main("student")
+        elif option == 6:
             db_manager.display_options()
         else:
             print("Invalid option. Please enter a valid option.")
@@ -894,8 +898,9 @@ class TeacherDatabase:
               1 -> Add New Teacher's Data
               2 -> Update Teacher's Data
               3 -> Remove Teacher's Data
-              4 -> Go To Main Page
-              5 -> Exit""")
+              4 -> Face Data
+              5 -> Go To Main Page
+              6 -> Exit""")
         ask = int(input("Choose your option: "))
         if ask not in {1, 2, 3, 4, 5}:
             print("Please enter a valid number.")
@@ -907,9 +912,11 @@ class TeacherDatabase:
             if id ==0:
                 id=self.show_teacher_information()                
             self.update_teacher_data(id)  # Added parentheses for method call
-        elif ask == 3:
+        elif ask == 3:            
             self.remove_teacher_data()  # Added parentheses for method call
         elif ask == 4:
+            Face_Store.main("teacher")
+        elif ask == 5:
             db_manager.display_options()
         else:
             exit()
