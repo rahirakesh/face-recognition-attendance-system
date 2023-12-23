@@ -1,0 +1,94 @@
+import mysql.connector
+
+database_connector = {
+    "host": "localhost",
+    "user": "root",
+    "database": "sas",
+    "password": "rakesh9339"
+}
+
+def create_table(connector, table_name):
+    # Create a table if it does not exist
+    connection = mysql.connector.connect(**connector)
+    cursor = connection.cursor()
+
+    create_table_query = f"""
+        CREATE TABLE IF NOT EXISTS {table_name} (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            opening_time TIME,
+            closing_time TIME,
+            first_class_start_time TIME,
+            last_class_end_time TIME
+        )
+    """
+    cursor.execute(create_table_query)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def add_department_settings(connector, dpt_id, opening_time, closing_time, first_class_start_time, last_class_end_time):
+    table_name = f"setting_{dpt_id}"
+    create_table(connector, table_name)
+
+    connection = mysql.connector.connect(**connector)
+    cursor = connection.cursor()
+
+    insert_query = f"""
+        INSERT INTO {table_name} (opening_time, closing_time, first_class_start_time, last_class_end_time)
+        VALUES (%s, %s, %s, %s)
+    """
+    data = (opening_time, closing_time, first_class_start_time, last_class_end_time)
+    cursor.execute(insert_query, data)
+
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def update_department_settings(connector, dpt_id, opening_time, closing_time, first_class_start_time, last_class_end_time):
+    table_name = f"setting_{dpt_id}"
+
+    connection = mysql.connector.connect(**connector)
+    cursor = connection.cursor()
+
+    update_query = f"""
+        UPDATE {table_name}
+        SET opening_time=%s, closing_time=%s, first_class_start_time=%s, last_class_end_time=%s
+    """
+    data = (opening_time, closing_time, first_class_start_time, last_class_end_time)
+    cursor.execute(update_query, data)
+
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def main():
+    print("Please add data to college starting and closing time:")
+    print("1 -> For new department")
+    print("2 -> For Update time")
+
+    choice = int(input("Please enter your option: "))
+
+    if choice == 1:
+        dpt_id = int(input("Please enter department ID: "))
+        opening_time = input("Please enter college opening time: ")
+        closing_time = input("Please enter college closing time: ")
+        first_class_start_time = input("Please enter first class starting time: ")
+        last_class_end_time = input("Please enter last class closing time: ")
+
+        add_department_settings(database_connector, dpt_id, opening_time, closing_time, first_class_start_time, last_class_end_time)
+        
+    elif choice == 2:
+        dpt_id = int(input("Please enter department ID: "))
+        opening_time = input("Please enter college opening time: ")
+        closing_time = input("Please enter college closing time: ")
+        first_class_start_time = input("Please enter first class starting time: ")
+        last_class_end_time = input("Please enter last class closing time: ")
+
+        update_department_settings(database_connector, dpt_id, opening_time, closing_time, first_class_start_time, last_class_end_time)
+
+if __name__ == "__main__":
+    main()
+
