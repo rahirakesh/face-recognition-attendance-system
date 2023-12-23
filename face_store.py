@@ -24,6 +24,8 @@ face_data/
 
 """
 
+
+"""
 import cv2
 import dlib
 import os
@@ -100,22 +102,22 @@ def capture_face_data(person_directory, num_images=50):
     # Release the camera and close the window
     cap.release()
     cv2.destroyAllWindows()
-# Capture and store face data (up to 100 images) in the person's subdirectory
-print("""Please select Your option :
-1 -> Store Student face data
-2 -> Store Teachers face data""")
-choice = int(input("Please enter your option: "))
+def main(choice):   
 
-if choice == 1:
-    department_name = input("Enter the department: ")
-    course_name = input("Enter the course: ")
-    semester_name = input("Enter the semester: ")
-    person_name = input("Enter the name of the person: ")
-    directory = create_person_directory(data_directory, department_name, person_name, choice=1, course=course_name, semester=semester_name)
-    capture_face_data(directory)
+    if choice == "student":
+        department_name = input("Enter the department: ")
+        course_name = input("Enter the course: ")
+        semester_name = input("Enter the semester: ")
+        person_name = input("Enter the name of the person: ")
+        directory = create_person_directory(data_directory, department_name, person_name, choice=1, course=course_name, semester=semester_name)
+        capture_face_data(directory)
+        return 
 
-elif choice == 2:
-    department_name = input("Enter the department: ")
-    person_name = input("Enter the name of the person: ")
-    directory = create_person_directory(data_directory, department_name, person_name, choice=2)
-    capture_face_data(directory)
+    elif choice == "teacher":
+        department_name = input("Enter the department: ")
+        person_name = input("Enter the name of the person: ")
+        directory = create_person_directory(data_directory, department_name, person_name, choice=2)
+        capture_face_data(directory)
+        return 
+
+
