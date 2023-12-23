@@ -26,6 +26,7 @@ def create_table(connector, table_name):
 
     cursor.close()
     connection.close()
+    return
 
 def add_department_settings(connector, dpt_id, opening_time, closing_time, first_class_start_time, last_class_end_time):
     table_name = f"setting_{dpt_id}"
@@ -45,6 +46,7 @@ def add_department_settings(connector, dpt_id, opening_time, closing_time, first
 
     cursor.close()
     connection.close()
+    return
 
 def update_department_settings(connector, dpt_id, opening_time, closing_time, first_class_start_time, last_class_end_time):
     table_name = f"setting_{dpt_id}"
@@ -63,11 +65,64 @@ def update_department_settings(connector, dpt_id, opening_time, closing_time, fi
 
     cursor.close()
     connection.close()
+    return
+
+
+def get_settings(connector, dpt_id):
+    """
+    Retrieves department settings for the specified department ID.
+
+    Parameters:
+    - connector: Dictionary containing database connection details.
+    - dpt_id: Department ID.
+
+    Returns:
+    - A dictionary with department settings if found, or None if the department does not exist.
+    """
+
+    table_name = f"setting_{dpt_id}"
+
+    try:
+        connection = mysql.connector.connect(**connector)
+        cursor = connection.cursor()
+
+        select_query = f"""
+            SELECT opening_time, closing_time, first_class_start_time, last_class_end_time
+            FROM {table_name}
+        """
+        cursor.execute(select_query)
+
+        result = cursor.fetchone()
+
+        if result:
+            # Create a dictionary with setting details
+            settings = {
+                "opening_time": result[0],
+                "closing_time": result[1],
+                "first_class_start_time": result[2],
+                "last_class_end_time": result[3]
+            }
+
+            return settings
+        else:
+            print(f"Settings not found for department with ID {dpt_id}")
+            return None
+
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None
+
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+    return
 
 def main():
-    print("Please add data to college starting and closing time:")
-    print("1 -> For new department")
-    print("2 -> For Update time")
+    print("""Please add data to college starting and closing time:
+          1 -> For new department
+          2 -> For Update time
+          3 -> Show Settings Data""")
 
     choice = int(input("Please enter your option: "))
 
@@ -88,7 +143,12 @@ def main():
         last_class_end_time = input("Please enter last class closing time: ")
 
         update_department_settings(database_connector, dpt_id, opening_time, closing_time, first_class_start_time, last_class_end_time)
-
+    elif choice == 3:
+        dpt_id = int("Please enter department Id : ")
+        get_settings(dpt_id)
+    else:
+        print("Please enetr valid key")
+        return
+    return
 if __name__ == "__main__":
     main()
-
