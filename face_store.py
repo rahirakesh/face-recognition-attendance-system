@@ -1,13 +1,49 @@
+""" Face Data Capture Script Documentation
+
+Introduction
+This script allows users to capture and store face data for both students and teachers. The program uses the dlib library for
+face detection and OpenCV for capturing images from the camera.
+
+
+Setup
+Before running the script, make sure you have the necessary libraries installed. You can install them using the following:
+1. pip install opencv-python dlib
+2. Shape_predictor_68_face_landmarks.dat     file for face landmark prediction
+
+
+
+Structure od directory to save face data
+face_data/
+|-- department/
+|   |-- course/  (for students)
+|   |   |-- semester/  (for students)
+|   |   |   |-- student_name/
+|   |
+|   |-- teachers/  (for teachers)
+|       |-- teacher_name/
+
+"""
 
 import cv2
 import dlib
 import os
-print("""Please select Your option :
-1 -> Store Student face data
-2 -> store Teachers face data""")
-def create_person_directory(data_directory, department, course, semester, person_name):
+
+def create_person_directory(data_directory, department, person_name, choice, course=None, semester=None):
+    if choice == 2:
+        # For teachers, set course and semester to None
+        course = None
+        semester = None
+
     # Create a subdirectory for the person
-    person_directory = os.path.join(data_directory, department, course, semester, person_name)
+    if choice == 1:
+        # For students, include course and semester in the path
+        person_directory = os.path.join(data_directory, department, str(course), str(semester), person_name)
+    elif choice == 2:
+        # For teachers, use 'teachers' in the path
+        person_directory = os.path.join(data_directory, department, 'teachers', person_name)
+    else:
+        raise ValueError("Invalid choice")
+
     os.makedirs(person_directory, exist_ok=True)
     return person_directory
 
@@ -20,10 +56,7 @@ if not os.path.exists(data_directory):
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
 
-def capture_face_data(department, course, semester, person_name, num_images=100):
-    # Create a subdirectory for the person
-    person_directory = create_person_directory(data_directory, department, course, semester, person_name)
-
+def capture_face_data(person_directory, num_images=50):
     # Open a connection to the camera
     cap = cv2.VideoCapture(0)
 
@@ -41,40 +74,48 @@ def capture_face_data(department, course, semester, person_name, num_images=100)
         faces = detector(gray)
 
         for face in faces:
-            # Get the landmarks for the face
-            landmarks = predictor(gray, face)
-
-            # Draw a rectangle around the face
+            # Get the face region coordinates
             x, y, w, h = face.left(), face.top(), face.width(), face.height()
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-            # Save the face data to a file in the person's subdirectory
-            face_data_file = os.path.join(person_directory, f"{person_name}_{image_counter}.jpg")
-            cv2.imwrite(face_data_file, frame[y:y+h, x:x+w])
+            # Check if the face region is valid
+            if 0 < x < frame.shape[1] and 0 < y < frame.shape[0]:
+                # Save the face data to a file in the person's subdirectory
+                face_data_file = os.path.join(person_directory, f"image_{image_counter}.jpg")
+                cv2.imwrite(face_data_file, frame[y:y + h, x:x + w])
 
-            # Increment the image counter
-            image_counter += 1
+                # Increment the image counter
+                image_counter += 1
 
-            # Display the frame with the rectangle around the face
-            cv2.imshow("Capture Face Data", frame)
+                # Display the frame with the camera feed
+                cv2.imshow("Capture Face Data", frame)
 
-            # Break out of the loop after capturing the desired number of images
-            if image_counter == num_images:
-                break
+                # Break out of the loop after capturing the desired number of images
+                if image_counter == num_images:
+                    break
 
-        # Break the loop if 'q' is pressed
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        # Check for the 'ESC' key to exit the loop
+        if cv2.waitKey(1) & 0xFF == 27:
             break
 
     # Release the camera and close the window
     cap.release()
     cv2.destroyAllWindows()
-
-# Get information about the person
-department = input("Enter the department: ")
-course = input("Enter the course: ")
-semester = input("Enter the semester: ")
-person_name = input("Enter the name of the person: ")
-
 # Capture and store face data (up to 100 images) in the person's subdirectory
-capture_face_data(department, course, semester, person_name, num_images=100)
+print("""Please select Your option :
+1 -> Store Student face data
+2 -> Store Teachers face data""")
+choice = int(input("Please enter your option: "))
+
+if choice == 1:
+    department_name = input("Enter the department: ")
+    course_name = input("Enter the course: ")
+    semester_name = input("Enter the semester: ")
+    person_name = input("Enter the name of the person: ")
+    directory = create_person_directory(data_directory, department_name, person_name, choice=1, course=course_name, semester=semester_name)
+    capture_face_data(directory)
+
+elif choice == 2:
+    department_name = input("Enter the department: ")
+    person_name = input("Enter the name of the person: ")
+    directory = create_person_directory(data_directory, department_name, person_name, choice=2)
+    capture_face_data(directory)
