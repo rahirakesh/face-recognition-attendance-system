@@ -10,6 +10,12 @@ import hashlib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import Face_Store
+import AttendanceManager
+import settings
+from HolidayManager import Holiday
+import webbrowser
+import Login
+import bcrypt
 print("""
     WELCOME TO FACE RECOGNITION ATTENDANCE SYSTEM
 """)
@@ -1264,107 +1270,7 @@ class CameraManager:
             dpt_id = int(input("Please enter the class id : "))
             #     if           
             # pass
-class MessageFormate:
-    def __init__(self):
-        self.self =self
-    def daily_formate(self):
-        def for_student(self,id):
-            pass
-        def for_parent(self,id):
-            name = "Rakesh"
-            class_name = "MCA"
-            semester = 3
-            month = "Find_current_month"
-            subjects = ["AI", "Big data", "CNDC", "Dot Net", "Cyber Security", "Lab/Seminar"]
 
-            body = f"""
-            Dear Parent,
-
-            We hope this message finds you well. We would like to share
-            the attendance record of your child for the month of November.
-
-            Student Information:
-            ___________________________________________________
-            Name of Student    : {name}
-            Class              : {class_name}
-            Semester           : {semester}
-            Attendance Month   : {month}
-            ____________________________________________________
-
-            Monthly Attendance Record:
-            ____________________________________________________
-            Subject Name  | Lectures Taken | Lectures Attended
-            ----------------------------------------------------
-            {subjects[0]} |       20        |         18
-            {subjects[1]} |       20        |         18
-            {subjects[2]} |       20        |         18
-            {subjects[3]} |       20        |         18
-            {subjects[4]} |       20        |         18
-            {subjects[5]} |       20        |         18
-            ----------------------------------------------------
-            Total         |      120        |        108 (90%)
-            ____________________________________________________
-
-            We are pleased to inform you that your child has maintained
-            a commendable attendance of 90% during this month.
-
-            Thank you for your continuous support in ensuring the
-            academic success of your child.
-
-            Best Regards,
-                            [Pt. Ravishankar Shukla University, Raipur]"""
-            
-        def for_teachers(self,id):
-            pass
-        def for_principle(self,id):
-            pass
-    def monthly_formate(self):
-        def for_student(self,id):
-            pass
-        def for_parent(self,id):
-            pass
-        def for_teachers(self,id):
-            pass
-        def for_principle(self,id):
-            pass
-class MessageSender:
-    def __init__(self, database_connector):
-        self.department_info = self.get_department_info(database_connector)
-
-    def department_info(self):
-        for i in self.department_info:
-            print(i)
-            class course_info:
-                def __init__(self,dpt_id):
-                    self.dpt_id = dpt_id
-                    print(dpt_id)
-    
-    def get_attendance_record(self,std_id,database_connector):
-        #I need make this months attendance record
-        pass
-    def get_student_info(self,semester_id,database_connector):
-        pass
-    def get_subject_name(self, semester_id, database_connector):
-        pass
-    def get_semester_info(self,course_id,databsase_connector):
-        pass
-    def get_course_info(self, dpt_id, database_connector):
-        pass
-
-    def get_department_info(self, database_connector):
-        query = "SELECT id, name FROM departments;"
-        try:
-            # Assuming database_connector has a cursor and connection
-            database_connector.cursor.execute(query)
-
-            # Fetch all the rows
-            departments_data = database_connector.cursor.fetchall()
-
-            # Extract department info and return as a list of tuples
-            return departments_data
-        except Exception as e:
-            print(f"Error: {e}")
-            return []
 class Help:
     def display(self):
         print("You selected help.")
@@ -1376,30 +1282,43 @@ class DatabaseManager:
             3: DepartmentDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas"), teachers_instance),
             4: TimeTableManager(DatabaseConnector("localhost", "root", "rakesh9339", "sas"), department),
             5: CameraManager(DatabaseConnector("localhost", "root", "rakesh9339", "sas"), department),
-            6: MessageSender(DatabaseConnector("localhost", "root", "rakesh9339", "sas")),
+            # 6: MessageSender(DatabaseConnector("localhost", "root", "rakesh9339", "sas")),
             7: Help(),
         }
 
     def display_options(self):
         while True:
             print("""
-_______________________________________________________
-Please select an option:
-1 -> Students information
-2 -> Teachers information
-3 -> Department information
-4 -> Time Table
-5 -> Camera Management
-6 -> Setting
-7 -> Help
-8 -> Exit
--------------------------------------------------------""")
+                  _______________________________________________________
+                  Please select an option:
+                  1 -> Attendance Data
+                  2 -> Students information
+                  3 -> Teachers information
+                  4 -> Department information
+                  5 -> Time Table
+                  6 -> Camera Management
+                  7 -> Setting
+                  8 -> Holiday Manager
+                  9 -> Help
+                  10 -> Exit
+                  -------------------------------------------------------""")
             try:
                 ask = int(input("Please choose your option: "))
-                if ask == 8:
+                if ask == 1: AttendanceManager.main()
+                elif ask == 9:
                     exit()
-                elif 1 <= ask <= 7:
+                elif 2 <= ask <= 6:
                     self.options[ask].display()
+                elif ask ==7:
+                    settings.main()
+                elif ask == 8:
+                    holiday = Holiday
+                    holiday.mainMethod()
+                if ask == 9:
+                    print("Going to Help Section. Please ensure Internet Connection.")
+                    url = "https://drive.google.com/drive/u/0/folders/1wpcw6CcbAN9Fb7guXBUUTGGgq3BiqLRm?q=sharedwith:public%20parent:1wpcw6CcbAN9Fb7guXBUUTGGgq3BiqLRm"
+                    webbrowser.open(url)                   
+                    
                 else:
                     print("Please enter a valid option.")
             except ValueError:
@@ -1463,20 +1382,26 @@ def login(db_manager):
 
     #function to convert passcode into hashcode using hass library 
     def hash_password(password):
-        # Use SHA-256 for password hashing
-        hash_object = hashlib.sha256(password.encode())
-        return hash_object.hexdigest()
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed
 
+    def verify_password(entered_password, hashed_password):
+        # Ensure both entered password and hashed password are encoded
+        entered_password = entered_password.encode('utf-8')
+        hashed_password = hashed_password.encode('utf-8')
+
+        return bcrypt.checkpw(entered_password, hashed_password)
     #to Verify OTP
     def otp_verifier(otp_entered, otp):
         # For simplicity, the correct OTP is hardcoded here.
-        if otp_entered == otp:
+        if int(otp_entered) == int(otp):
             return True
         else:
             return False
 
     #convert hassed data into plain text for comparision passcode
-    def retrieve_hashed_password(email):
+    def retrieve_password_from_db(email):
         # Connect to MySQL 
         conn = mysql.connector.connect(
             host="localhost",
@@ -1500,16 +1425,49 @@ def login(db_manager):
             return result[0]  # Return the hashed password
         else:
             return None  # Email not found in the database
+    def save_data(email, name, contact, passcode):
+        try:
+            # Connect to MySQL 
+            conn = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="rakesh9339",
+                database="sas"
+            )
 
-    # Login process
-    email_id = input("Email Id: ")
-    pc = input("Password: ")
+            # Create a cursor object
+            cursor = conn.cursor()
 
+            # SQL query to insert data into the login_details table
+            sql = "INSERT INTO login_details (email, name, contact, passcode) VALUES (%s, %s, %s, %s)"
+            data = (email, name, contact, passcode)
+
+            # Execute the query
+            cursor.execute(sql, data)
+
+            # Commit the changes to the database
+            conn.commit()
+
+            print("Data successfully saved to the database.")
+            return
+
+        except mysql.connector.Error as e:
+            print(f"Error: {e}")
+            return
+        finally:
+            # Close the cursor and connection
+            cursor.close()
+            conn.close()
+            return
+    
+    
     #start here excution of pragram 
-    def main():
-        if email_id == "" and pc == "":  
-            print("You entered add New user")
-            otp=send_otp_email("prsu.attendance@gmail.com")
+    def main(email_id, pc):
+        if email_id == "Admin" and pc == "Admin":  
+            print("""You entered add New user
+                please wait for OTP""")
+            otp = send_otp_email("prsu.attendance@gmail.com")
+            print("OTP send successfully to admin Email ")
             entered_otp = input(("Please enter OTP : "))
             check = otp_verifier(entered_otp, otp)
             if check:
@@ -1517,44 +1475,44 @@ def login(db_manager):
                 userName = input("Please enter User Name: ")
                 contact_number = input("Please enter Contact number: ")
                 email = input("Please enter Email Id: ")
+                
                 print("OTP sending. Please wait for a minute.")
-                otp = send_otp_email(email)
+                user_otp = int(send_otp_email(email))          
 
                 # Send OTP and verify
                 max_attempts = 3
-                for attempt in range(1, max_attempts + 1):
-                    otp_enter = int(input("Enter OTP: "))
-                    check = otp_verifier(otp_enter, otp)
+                for attempt in range(1, max_attempts + 1):                    
+                    otp_entered = int(input("Enter OTP: "))
+                    check = otp_verifier(otp_entered, user_otp) 
+                                    
                     if check:
-                        print(f"User with email {email} has been successfully added.")
+                        print("OTP verified Successfully : ")
+                        password = input("Please enter password : ")
+                        password_hashed = hash_password(password)
+                        save_data(email, userName, contact_number, password_hashed)
+                        print(f"User with email {email} has been successfully added.")                        
                         return
                     else:
                         print(f"Attempt {attempt}/{max_attempts}: OTP verification failed.")
+                        
 
                 print("Maximum attempts reached. Exiting.")
                 
             else:
-                print("Invalid master password. Exiting.")
+                print("Invalid OTP.")
+                main()
         else:
-            # Retrieve hashed password from the database
-            hashed_password_from_db = retrieve_hashed_password(email_id)
-
-            if hashed_password_from_db:
-                # Hash the entered password for comparison
-                entered_password_hashed = hash_password(pc)
-
-                # Compare hashed passwords
-                if hashed_password_from_db == entered_password_hashed:
-                    print("Login successful")            
-                    
-                    db_manager.display_options()
-                else:
-                    print("Invalid password. Please enter valid credentials.")
+            password_from_database = retrieve_password_from_db(email_id)
+            if password_from_database and verify_password(pc, password_from_database):
+                print("Login successful")
+                db_manager.display_options()
             else:
-                print("Email not found. Please enter valid credentials.")
+                print("Please enter valid data")
 
-    # Call the main function, It start the login page
-    main()
+    email_id = input("Email Id: ")
+    pc = input("Password: ")
+    # Call the main function, It starts the login page
+    main(email_id, pc)
 
 if __name__ == "__main__":
     teachers_instance = TeacherDatabase(DatabaseConnector("localhost", "root", "rakesh9339", "sas"))
