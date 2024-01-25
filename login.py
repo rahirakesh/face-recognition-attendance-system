@@ -12,8 +12,8 @@ def send_otp_email(email):
     # Set up the email server
     smtp_server = "smtp.gmail.com"
     smtp_port = 465
-    smtp_username = "prsu.attendance@gmail.com"
-    smtp_password = "kcbbevsrbejxalbf"
+    smtp_username = sender.email@email.com"
+    smtp_password = password here"
 
     # Create a secure SSL context
     context = ssl.create_default_context()
@@ -66,7 +66,7 @@ if email_id == "" and pc == "#*06#":
             print("OTP verification failed. Exiting.")
             exit()
 
-elif email_id == "9339rahi@gmail.com" and pc == "raCase^9339":
+elif email_id == "justcheck@email.com" and pc == "passcodehere":
     print("Login successful")
 else:
     print("Please enter valid credentials")
