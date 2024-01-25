@@ -5,9 +5,9 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 
 # Define email sender and receiver
-email_sender = 'prsu.attendance@gmail.com'
-email_password = 'kcbbevsrbejxalbf'
-email_receiver = 'connectmypc22@gmail.com'
+email_sender = 'sender.email.here.@mail.com'
+email_password = 'senderpassword here'
+email_receiver = 'recever.mail.@mail.com'
 
 # Set the subject of the email
 subject = 'Attendance record received from PRS University'
